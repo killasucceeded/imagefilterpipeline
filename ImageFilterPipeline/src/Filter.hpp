@@ -29,3 +29,23 @@ class Filter {
   // = delete явно запрещает компилятору генерировать эти методы.
   Filter(const Filter&)            = delete;
   Filter& operator=(const Filter&) = delete;
+
+ protected:
+  /// Конструктор защищён — нельзя создать объект абстрактного Filter напрямую,
+  /// только через производные классы (GrayscaleFilter, BlurFilter и т.д.).
+  Filter() = default;
+
+  /// Вспомогательный метод: ограничивает float-значение диапазоном [0, 255]
+  /// и приводит к uint8_t. Используется во всех фильтрах при записи пикселей.
+  ///
+  /// static — не требует объекта, вызывается как Filter::clamp(v)
+  /// constexpr — вычисляется на этапе компиляции, если аргумент известен заранее
+  /// noexcept — не бросает исключений
+  [[nodiscard]] static constexpr uint8_t clamp(float v) noexcept {
+    if (v < 0.0f)   return 0;    // значения меньше 0 → чёрный
+    if (v > 255.0f) return 255;  // значения больше 255 → белый
+    return static_cast<uint8_t>(v);
+  }
+};
+
+}  // namespace ifp

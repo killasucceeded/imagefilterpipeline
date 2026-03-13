@@ -28,4 +28,28 @@ class BrightnessFilter : public Filter {
           "Brightness factor must be non-negative, got: " + std::to_string(factor));
     }
   }
+  /// Применяет изменение яркости ко всем пикселям изображения.
+  void apply(Image& img) const override {
+    // Тройной вложенный цикл: по строкам, столбцам и каналам.
+    // Все три канала обрабатываются одинаково — умножение на factor_.
+    for (std::size_t y = 0; y < img.height(); ++y) {
+      for (std::size_t x = 0; x < img.width(); ++x) {
+        for (std::size_t c = 0; c < Image::kChannels; ++c) {
+          // img.at() возвращает ссылку — записываем результат напрямую.
+          // clamp() из базового Filter — защищает от выхода за [0, 255].
+          img.at(x, y, c) = clamp(img.at(x, y, c) * factor_);
+        }
+      }
+    }
+  }
 
+  /// Имя включает коэффициент — удобно видеть в логах Pipeline.
+  [[nodiscard]] std::string name() const override {
+    return "Brightness(x" + std::to_string(factor_) + ")";
+  }
+
+private:
+  float factor_;  // множитель яркости, задаётся при создании фильтра
+};
+
+}  // namespace ifp

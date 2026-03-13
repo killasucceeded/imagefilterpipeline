@@ -101,3 +101,64 @@ class Image {
     }
     return *this;
   }
+
+  /// Деструктор — unique_ptr автоматически освобождает буфер пикселей.
+  /// = default означает «сгенерировать стандартный деструктор».
+  ~Image() = default;
+
+  // ── Методы доступа ────────────────────────────────────────────────────────
+
+  /// Ширина изображения в пикселях.
+  /// [[nodiscard]] — предупреждение компилятора, если результат игнорируется.
+  /// noexcept — гарантия отсутствия исключений.
+  [[nodiscard]] std::size_t width()  const noexcept { return width_; }
+
+  /// Высота изображения в пикселях.
+  [[nodiscard]] std::size_t height() const noexcept { return height_; }
+
+  /// Возвращает true, если изображение пустое (не было создано с размером).
+  [[nodiscard]] bool empty() const noexcept { return data_ == nullptr; }
+
+  /// Доступ к значению канала пикселя по координатам (x, y) и номеру канала.
+  /// channel: 0=R, 1=G, 2=B
+  /// Версия без const — позволяет изменять пиксель: img.at(x, y, 0) = 255;
+  /// Бросает std::out_of_range при выходе за границы.
+  [[nodiscard]] uint8_t& at(std::size_t x, std::size_t y, std::size_t channel) {
+    boundsCheck(x, y, channel);
+    // Формула индекса: строка y, столбец x, канал channel
+    return data_[(y * width_ + x) * kChannels + channel];
+  }
+
+  /// Константная версия at() — только для чтения (используется в const Image&).
+  [[nodiscard]] const uint8_t& at(std::size_t x, std::size_t y, std::size_t channel) const {
+    boundsCheck(x, y, channel);
+    return data_[(y * width_ + x) * kChannels + channel];
+  }
+
+  /// Сырой указатель на буфер данных — нужен для передачи в stb_image при сохранении/загрузке.
+  [[nodiscard]] uint8_t*       rawData()       noexcept { return data_.get(); }
+  [[nodiscard]] const uint8_t* rawData() const noexcept { return data_.get(); }
+
+  /// Константа числа каналов: всегда 3 (RGB).
+  /// static — одна на весь класс, не привязана к конкретному объекту.
+  /// constexpr — вычисляется на этапе компиляции, не занимает память в рантайме.
+  static constexpr std::size_t kChannels = 3;
+
+ private:
+  /// Проверяет, что координаты не выходят за границы изображения.
+  /// Вынесено в отдельный метод, чтобы не дублировать код в двух версиях at().
+  void boundsCheck(std::size_t x, std::size_t y, std::size_t ch) const {
+    if (x >= width_ || y >= height_ || ch >= kChannels) {
+      throw std::out_of_range("Image::at — index out of range");
+    }
+  }
+
+  std::size_t width_  = 0;  // ширина в пикселях, 0 для пустого изображения
+  std::size_t height_ = 0;  // высота в пикселях
+  std::unique_ptr<uint8_t[]> data_;
+  // unique_ptr<uint8_t[]> — умный указатель на массив байт.
+  // Автоматически вызывает delete[] при уничтожении объекта (RAII).
+  // nullptr по умолчанию — пустое изображение.
+};
+
+}  // namespace ifp

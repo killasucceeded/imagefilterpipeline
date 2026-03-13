@@ -63,3 +63,41 @@ class Image {
     // memcpy — побайтовое копирование всего буфера пикселей.
     std::memcpy(data_.get(), other.data_.get(), width_ * height_ * kChannels);
   }
+
+  /// Копирующий оператор присваивания — аналог копирующего конструктора,
+  /// но для уже существующего объекта. Проверка self-assignment (this != &other)
+  /// защищает от случая img = img.
+  Image& operator=(const Image& other) {
+    if (this != &other) {
+      width_  = other.width_;
+      height_ = other.height_;
+      data_   = std::make_unique<uint8_t[]>(width_ * height_ * kChannels);
+      std::memcpy(data_.get(), other.data_.get(), width_ * height_ * kChannels);
+    }
+    return *this;
+  }
+
+  /// Перемещающий конструктор — «крадёт» ресурс у временного объекта (rvalue).
+  /// Вместо копирования буфера просто передаёт владение unique_ptr.
+  /// После перемещения исходный объект становится пустым (empty() == true).
+  /// noexcept — гарантия, что не бросает исключений (важно для STL-контейнеров).
+  Image(Image&& other) noexcept
+      : width_(other.width_),
+        height_(other.height_),
+        data_(std::move(other.data_)) {  // std::move передаёт владение указателем
+    other.width_  = 0;
+    other.height_ = 0;
+    // other.data_ теперь nullptr — деструктор other ничего не освободит
+  }
+
+  /// Перемещающий оператор присваивания.
+  Image& operator=(Image&& other) noexcept {
+    if (this != &other) {
+      width_  = other.width_;
+      height_ = other.height_;
+      data_   = std::move(other.data_);
+      other.width_  = 0;
+      other.height_ = 0;
+    }
+    return *this;
+  }

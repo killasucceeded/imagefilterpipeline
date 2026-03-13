@@ -78,3 +78,36 @@ class EdgeDetectionFilter : public Filter {
   }
 
   [[nodiscard]] std::string name() const override { return "EdgeDetection(Sobel)"; }
+private:
+  // constexpr static — ядра Собеля вычисляются на этапе компиляции и хранятся
+  // как константы в сегменте данных программы. std::array<std::array<float,3>,3>
+  // — двумерный массив 3×3 с размером, известным на этапе компиляции.
+  // {{...}} — синтаксис инициализации вложенных aggregate-типов.
+
+  /// Ядро Собеля по X — детектирует вертикальные границы (горизонтальный градиент).
+  static constexpr std::array<std::array<float, 3>, 3> kSobelX = {{
+    {-1.0f, 0.0f, 1.0f},
+    {-2.0f, 0.0f, 2.0f},
+    {-1.0f, 0.0f, 1.0f}
+  }};
+
+  /// Ядро Собеля по Y — детектирует горизонтальные границы (вертикальный градиент).
+  static constexpr std::array<std::array<float, 3>, 3> kSobelY = {{
+    {-1.0f, -2.0f, -1.0f},
+    { 0.0f,  0.0f,  0.0f},
+    { 1.0f,  2.0f,  1.0f}
+  }};
+
+  /// Вычисляет воспринимаемую яркость пикселя по стандарту ITU-R BT.601.
+  /// noexcept — не бросает исключений (boundsCheck в at() тоже не бросает здесь,
+  /// т.к. координаты уже проверены через std::clamp выше).
+  [[nodiscard]] static float luminance(const Image& img,
+                                       std::size_t x,
+                                       std::size_t y) noexcept {
+    return 0.299f * img.at(x, y, 0) +  // R
+           0.587f * img.at(x, y, 1) +  // G
+           0.114f * img.at(x, y, 2);   // B
+  }
+};
+
+}  // namespace ifp

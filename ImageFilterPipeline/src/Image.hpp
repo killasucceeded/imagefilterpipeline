@@ -30,3 +30,36 @@ class Image {
   /// Конструктор по умолчанию — создаёт «пустое» изображение (empty() == true).
   /// Нужен, например, для std::optional<Image> без значения.
   Image() = default;
+
+  /// Основной конструктор — создаёт изображение заданного размера, заполненное нулями.
+  /// Бросает std::invalid_argument, если width или height равны нулю.
+  Image(std::size_t width, std::size_t height)
+      : width_(width),
+        height_(height),
+        // make_unique<uint8_t[]> выделяет массив байт нужного размера на куче.
+        // unique_ptr гарантирует освобождение памяти при уничтожении Image (RAII).
+        data_(std::make_unique<uint8_t[]>(width * height * kChannels)) {
+    if (width == 0 || height == 0) {
+      // Бросаем исключение — нулевой размер не имеет смысла.
+      throw std::invalid_argument("Image dimensions must be positive");
+    }
+    // Обнуляем все байты пикселей (чёрное изображение).
+    std::memset(data_.get(), 0, width * height * kChannels);
+  }
+
+  // ── Правило Пяти (Rule of Five) ───────────────────────────────────────────
+  // Если класс управляет ресурсом вручную (здесь — через unique_ptr),
+  // нужно явно определить все пять специальных методов:
+  // копирующий конструктор, копирующий оператор =,
+  // перемещающий конструктор, перемещающий оператор =, деструктор.
+
+  /// Копирующий конструктор — создаёт НЕЗАВИСИМУЮ копию изображения.
+  /// Без него копия и оригинал делили бы один и тот же буфер данных (shallow copy),
+  /// что приводило бы к double-free и повреждению памяти.
+  Image(const Image& other)
+      : width_(other.width_),
+        height_(other.height_),
+        data_(std::make_unique<uint8_t[]>(other.width_ * other.height_ * kChannels)) {
+    // memcpy — побайтовое копирование всего буфера пикселей.
+    std::memcpy(data_.get(), other.data_.get(), width_ * height_ * kChannels);
+  }

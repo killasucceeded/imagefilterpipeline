@@ -48,3 +48,24 @@ class GrayscaleFilter : public Filter {
     }
   }
 
+  /// Возвращает имя фильтра для отображения в меню и логах.
+  [[nodiscard]] std::string name() const override { return "Grayscale"; }
+
+private:
+  /// Возвращает коэффициент яркости для заданного канала (BT.601).
+  ///
+  /// constexpr — вычисляется на этапе компиляции: если channel известен
+  /// заранее (как 'R', 'G', 'B'), компилятор заменит вызов на число прямо в коде.
+  /// static — метод принадлежит классу, не конкретному объекту.
+  /// noexcept — не бросает исключений.
+  [[nodiscard]] static constexpr float getLuminanceWeight(char channel) noexcept {
+    switch (channel) {
+      case 'R': return 0.299f;  // красный — 29.9% воспринимаемой яркости
+      case 'G': return 0.587f;  // зелёный — 58.7%
+      case 'B': return 0.114f;  // синий   — 11.4%
+      default:  return 0.0f;    // неизвестный канал — не вносит вклад
+    }
+  }
+};
+
+}  // namespace ifp

@@ -16,3 +16,7 @@ namespace ifp {
 ///
 /// Итого: gray = 0.299*R + 0.587*G + 0.114*B
 /// Полученное значение записывается во все три канала → оттенок серого.
+class GrayscaleFilter : public Filter {
+  // public Filter — GrayscaleFilter является фильтром (наследование).
+  // Благодаря этому объект GrayscaleFilter можно использовать везде,
+  // где ожидается Filter* или Filter& (полиморфизм).

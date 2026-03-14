@@ -197,3 +197,72 @@ TEST(EdgeDetectionFilterTest, UniformImageProducesNoEdges) {
 TEST(EdgeDetectionFilterTest, Name) {
   EXPECT_EQ(EdgeDetectionFilter{}.name(), "EdgeDetection(Sobel)");
 }
+
+// ── Pipeline tests ────────────────────────────────────────────────────────────
+
+TEST(PipelineTest, EmptyPipelineDoesNothing) {
+  Image img = makeColorImage(100, 100, 100);
+  Pipeline p;
+  p.run(img);
+  EXPECT_EQ(img.at(0, 0, 0), 100);
+}
+
+TEST(PipelineTest, AddFilterIncreasesSize) {
+  Pipeline p;
+  EXPECT_EQ(p.size(), 0u);
+  p.addFilter(std::make_unique<GrayscaleFilter>());
+  EXPECT_EQ(p.size(), 1u);
+  p.addFilter(std::make_unique<BrightnessFilter>(1.5f));
+  EXPECT_EQ(p.size(), 2u);
+}
+
+TEST(PipelineTest, FiltersAppliedInOrder) {
+  // Grayscale then brightness 0 → all black
+  Image img = makeColorImage(200, 100, 50);
+  Pipeline p;
+  p.addFilter(std::make_unique<GrayscaleFilter>());
+  p.addFilter(std::make_unique<BrightnessFilter>(0.0f));
+  p.run(img);
+  EXPECT_EQ(img.at(0, 0, 0), 0);
+}
+
+TEST(PipelineTest, NullFilterThrows) {
+  Pipeline p;
+  EXPECT_THROW(p.addFilter(nullptr), std::invalid_argument);
+}
+
+TEST(PipelineTest, FilterNameAccess) {
+  Pipeline p;
+  p.addFilter(std::make_unique<GrayscaleFilter>());
+  EXPECT_EQ(p.filterName(0), "Grayscale");
+}
+
+// ── ImageLoader tests ─────────────────────────────────────────────────────────
+
+TEST(ImageLoaderTest, LoadNonexistentReturnsNullopt) {
+  auto result = ImageLoader::load("/nonexistent/path/image.ppm");
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(ImageLoaderTest, SaveAndLoadRoundTrip) {
+  Image original = makeColorImage(123, 45, 67, 6, 6);
+  const std::string path = "/tmp/ifp_test_roundtrip.ppm";
+
+  ImageLoader::save(original, path);
+
+  auto loaded = ImageLoader::load(path);
+  ASSERT_TRUE(loaded.has_value());
+
+  EXPECT_EQ(loaded->width(),  original.width());
+  EXPECT_EQ(loaded->height(), original.height());
+  EXPECT_EQ(loaded->at(0, 0, 0), 123);
+  EXPECT_EQ(loaded->at(0, 0, 1), 45);
+  EXPECT_EQ(loaded->at(0, 0, 2), 67);
+
+  std::remove(path.c_str());
+}
+
+TEST(ImageLoaderTest, SaveEmptyImageThrows) {
+  Image empty;
+  EXPECT_THROW(ImageLoader::save(empty, "/tmp/empty.ppm"), ImageException);
+}

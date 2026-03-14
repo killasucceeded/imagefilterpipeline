@@ -155,3 +155,45 @@ TEST(BrightnessFilterTest, IdentityFactor) {
   EXPECT_EQ(img.at(0, 0, 1), 45);
   EXPECT_EQ(img.at(0, 0, 2), 67);
 }
+
+// ── BlurFilter tests ──────────────────────────────────────────────────────────
+
+TEST(BlurFilterTest, ZeroRadiusThrows) {
+  EXPECT_THROW(BlurFilter(0), FilterException);
+}
+
+TEST(BlurFilterTest, UniformImageUnchanged) {
+  Image img = makeColorImage(128, 128, 128);
+  BlurFilter f(1);
+  f.apply(img);
+  // Uniform image stays uniform after blur
+  EXPECT_EQ(img.at(1, 1, 0), 128);
+}
+
+TEST(BlurFilterTest, CenterPixelAffected) {
+  // Single bright pixel in center — after blur should be dimmer
+  Image img(5, 5);
+  img.at(2, 2, 0) = 255;  // one bright red pixel
+  BlurFilter f(1);
+  f.apply(img);
+  // Center should now be less than 255 (averaged with neighbors)
+  EXPECT_LT(img.at(2, 2, 0), 255);
+}
+
+TEST(BlurFilterTest, Name) {
+  EXPECT_EQ(BlurFilter(2).name(), "Blur(r=2)");
+}
+
+// ── EdgeDetectionFilter tests ─────────────────────────────────────────────────
+
+TEST(EdgeDetectionFilterTest, UniformImageProducesNoEdges) {
+  Image img = makeColorImage(128, 128, 128, 8, 8);
+  EdgeDetectionFilter f;
+  f.apply(img);
+  // Interior pixels of a uniform image should have near-zero gradient
+  EXPECT_NEAR(img.at(4, 4, 0), 0, 5);
+}
+
+TEST(EdgeDetectionFilterTest, Name) {
+  EXPECT_EQ(EdgeDetectionFilter{}.name(), "EdgeDetection(Sobel)");
+}

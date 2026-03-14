@@ -35,6 +35,12 @@ class Pipeline {
   Pipeline& operator=(Pipeline&&) = default;
 
 
+
+ private:
+  /// Вектор фильтров — порядок элементов определяет порядок применения.
+  /// unique_ptr гарантирует, что каждый фильтр существует в единственном экземпляре
+  /// и автоматически удаляется при уничтожении Pipeline (RAII).
+  std::vector<std::unique_ptr<Filter>> filters_;
 };
 
 }  // namespace ifp

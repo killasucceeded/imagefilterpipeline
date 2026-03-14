@@ -21,6 +21,19 @@ namespace ifp {
 /// - unique_ptr — Pipeline является единственным владельцем каждого фильтра
 /// - Filter* (полиморфизм) — вызываются виртуальные методы конкретных фильтров
 class Pipeline {
+ public:
+  Pipeline() = default;
+
+  // Pipeline нельзя копировать — unique_ptr не копируются.
+  // Если бы это было нужно, пришлось бы реализовать глубокое копирование фильтров.
+  Pipeline(const Pipeline&)            = delete;
+  Pipeline& operator=(const Pipeline&) = delete;
+
+  // Pipeline можно перемещать — передача владения вектором фильтров.
+  // = default: компилятор генерирует перемещение автоматически.
+  Pipeline(Pipeline&&)            = default;
+  Pipeline& operator=(Pipeline&&) = default;
+
 
 };
 

@@ -34,6 +34,21 @@ class Pipeline {
   Pipeline(Pipeline&&)            = default;
   Pipeline& operator=(Pipeline&&) = default;
 
+  /// Добавляет фильтр в конец конвейера.
+  ///
+  /// Принимает unique_ptr по значению — вызывающий код передаёт владение.
+  /// Типичный вызов: pipeline.addFilter(std::make_unique<GrayscaleFilter>());
+  /// После вызова переменная вызывающего кода становится nullptr.
+  void addFilter(std::unique_ptr<Filter> filter) {
+    if (!filter) {
+      // Защита от добавления nullptr — явная ошибка программиста.
+      throw std::invalid_argument("Cannot add null filter to pipeline");
+    }
+    // std::move необходим, так как unique_ptr нельзя скопировать.
+    // После push_back локальная переменная filter становится nullptr.
+    filters_.push_back(std::move(filter));
+  }
+
 
 
  private:

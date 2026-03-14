@@ -1,56 +1,86 @@
 #pragma once
 
+#include <cstddef>      // std::size_t — беззнаковый целый тип для размеров
 #include <string>       // std::string
+#include <vector>       // (не используется напрямую, но часто нужен в фильтрах)
+
 #include "../Exceptions.hpp"
 #include "../Filter.hpp"
 #include "../Image.hpp"
 
 namespace ifp {
 
-/// Фильтр регулировки яркости (Brightness).
+/// Фильтр размытия — Box Blur (прямоугольное усреднение).
 ///
-/// Алгоритм: умножаем значение каждого канала на коэффициент factor.
-///   factor > 1.0 — осветление (например, 2.0 удвоит яркость)
-///   factor = 1.0 — изображение не изменяется
-///   factor < 1.0 — затемнение (например, 0.5 вдвое уменьшит яркость)
-///   factor = 0.0 — полностью чёрное изображение
+/// Алгоритм: для каждого пикселя берём квадратное окно соседних пикселей
+/// («ядро» свёртки) и заменяем пиксель на среднее арифметическое всех пикселей в окне.
 ///
-/// Результат ограничивается диапазоном [0, 255] через clamp(),
-/// поэтому пересвет (overexposure) не приводит к «обёртыванию» значений.
-class BrightnessFilter : public Filter {
+/// Размер окна задаётся радиусом:
+///   radius=1 → окно 3×3 (каждый пиксель усредняется с 8 соседями)
+///   radius=2 → окно 5×5
+///   radius=N → окно (2N+1)×(2N+1)
+///
+/// На границах изображения окно обрезается (clamping) — не выходим за пределы.
+class BlurFilter : public Filter {
  public:
-  /// Конструктор с коэффициентом яркости.
-  /// explicit — запрещает неявное преобразование float в BrightnessFilter.
-  /// Бросает FilterException при отрицательном factor (физического смысла нет).
-  explicit BrightnessFilter(float factor) : factor_(factor) {
-    if (factor < 0.0f) {
-      throw FilterException(
-          "Brightness factor must be non-negative, got: " + std::to_string(factor));
+  /// Конструктор с параметром радиуса.
+  /// explicit — запрещает неявное преобразование числа в BlurFilter.
+  /// Значение по умолчанию radius=1 — минимальное размытие (окно 3×3).
+  explicit BlurFilter(std::size_t radius = 1) : radius_(radius) {
+    if (radius == 0) {
+      // Радиус 0 означает окно 1×1 — фильтр ничего не делает.
+      // Считаем это ошибкой программиста.
+      throw FilterException("Blur radius must be at least 1");
     }
   }
 
-  /// Применяет изменение яркости ко всем пикселям изображения.
+  /// Применяет размытие к изображению.
   void apply(Image& img) const override {
-    // Тройной вложенный цикл: по строкам, столбцам и каналам.
-    // Все три канала обрабатываются одинаково — умножение на factor_.
-    for (std::size_t y = 0; y < img.height(); ++y) {
-      for (std::size_t x = 0; x < img.width(); ++x) {
+    const std::size_t w = img.width();
+    const std::size_t h = img.height();
+
+    // Создаём копию изображения — читаем из неё, пишем в оригинал.
+    // ВАЖНО: без копии при обходе слева направо уже изменённые пиксели
+    // попадали бы в окно следующих пикселей → неверный результат.
+    Image copy = img;
+
+    for (std::size_t y = 0; y < h; ++y) {
+      for (std::size_t x = 0; x < w; ++x) {
+        // Обрабатываем каждый канал независимо (R, G, B).
         for (std::size_t c = 0; c < Image::kChannels; ++c) {
-          // img.at() возвращает ссылку — записываем результат напрямую.
-          // clamp() из базового Filter — защищает от выхода за [0, 255].
-          img.at(x, y, c) = clamp(img.at(x, y, c) * factor_);
+          float sum  = 0.0f;
+          int   count = 0;
+
+          // Вычисляем границы окна с учётом краёв изображения (clamping).
+          // Оператор ? : — тернарный оператор: (условие ? если_да : если_нет).
+          // Защита от underflow: std::size_t беззнаковый, (0 - 1) было бы огромным числом.
+          const auto yMin = static_cast<std::size_t>((y > radius_) ? y - radius_ : 0);
+          const auto yMax = std::min(y + radius_, h - 1);
+          const auto xMin = static_cast<std::size_t>((x > radius_) ? x - radius_ : 0);
+          const auto xMax = std::min(x + radius_, w - 1);
+
+          // Суммируем все пиксели в окне.
+          for (std::size_t ky = yMin; ky <= yMax; ++ky) {
+            for (std::size_t kx = xMin; kx <= xMax; ++kx) {
+              sum += copy.at(kx, ky, c);  // читаем из копии, не из оригинала
+              ++count;
+            }
+          }
+
+          // Среднее арифметическое → записываем в оригинал.
+          img.at(x, y, c) = clamp(sum / static_cast<float>(count));
         }
       }
     }
   }
 
-  /// Имя включает коэффициент — удобно видеть в логах Pipeline.
+  /// Имя фильтра включает радиус — удобно для логов.
   [[nodiscard]] std::string name() const override {
-    return "Brightness(x" + std::to_string(factor_) + ")";
+    return "Blur(r=" + std::to_string(radius_) + ")";
   }
 
  private:
-  float factor_;  // множитель яркости, задаётся при создании фильтра
+  std::size_t radius_;  // радиус ядра размытия, задаётся при создании
 };
 
 }  // namespace ifp

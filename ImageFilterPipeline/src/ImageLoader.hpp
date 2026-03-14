@@ -83,7 +83,30 @@ class ImageLoader {
     return img;  // возвращаем Image, обёрнутый в optional
   }
 
+  /// Сохраняет изображение в файл формата PNG.
+  ///
+  /// Бросает ImageException, если изображение пустое.
+  /// Бросает FileIOException, если файл не удалось записать.
+  static void save(const Image& img, const std::string& path) {
+    if (img.empty()) {
+      throw ImageException("Cannot save an empty image");
+    }
 
+    // stbi_write_png — записывает PNG файл.
+    // Возвращает ненулевое значение при успехе, 0 при ошибке.
+    const int ok = stbi_write_png(
+        path.c_str(),                              // путь к выходному файлу
+        static_cast<int>(img.width()),             // ширина
+        static_cast<int>(img.height()),            // высота
+        static_cast<int>(Image::kChannels),        // число каналов (3 = RGB)
+        img.rawData(),                             // указатель на пиксели
+        static_cast<int>(img.width() * Image::kChannels)  // stride: байт в строке
+    );
+
+    if (!ok) {
+      throw FileIOException(path);
+    }
+  }
 };
 
 }  // namespace ifp

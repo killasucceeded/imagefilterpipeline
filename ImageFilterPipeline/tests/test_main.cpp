@@ -86,3 +86,72 @@ TEST(ImageTest, MoveConstructor) {
   EXPECT_EQ(moved.at(0, 0, 0), 10);
 }
 
+// ── GrayscaleFilter tests ─────────────────────────────────────────────────────
+
+TEST(GrayscaleFilterTest, PureRedBecomesGray) {
+  Image img = makeColorImage(255, 0, 0);
+  GrayscaleFilter f;
+  f.apply(img);
+
+  // All channels should be equal after grayscale
+  EXPECT_EQ(img.at(0, 0, 0), img.at(0, 0, 1));
+  EXPECT_EQ(img.at(0, 0, 1), img.at(0, 0, 2));
+  // Luminance of pure red ≈ 0.299 × 255 ≈ 76
+  EXPECT_NEAR(img.at(0, 0, 0), 76, 1);
+}
+
+TEST(GrayscaleFilterTest, WhiteStaysWhite) {
+  Image img = makeColorImage(255, 255, 255);
+  GrayscaleFilter f;
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 255);
+}
+
+TEST(GrayscaleFilterTest, BlackStaysBlack) {
+  Image img = makeColorImage(0, 0, 0);
+  GrayscaleFilter f;
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 0);
+}
+
+TEST(GrayscaleFilterTest, Name) {
+  EXPECT_EQ(GrayscaleFilter{}.name(), "Grayscale");
+}
+
+// ── BrightnessFilter tests ────────────────────────────────────────────────────
+
+TEST(BrightnessFilterTest, DoublingBrightness) {
+  Image img = makeColorImage(100, 100, 100);
+  BrightnessFilter f(2.0f);
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 200);
+}
+
+TEST(BrightnessFilterTest, ClampsAt255) {
+  Image img = makeColorImage(200, 200, 200);
+  BrightnessFilter f(2.0f);
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 255);
+}
+
+TEST(BrightnessFilterTest, ZeroFactorBlackens) {
+  Image img = makeColorImage(200, 150, 100);
+  BrightnessFilter f(0.0f);
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 0);
+  EXPECT_EQ(img.at(0, 0, 1), 0);
+  EXPECT_EQ(img.at(0, 0, 2), 0);
+}
+
+TEST(BrightnessFilterTest, NegativeFactorThrows) {
+  EXPECT_THROW(BrightnessFilter(-1.0f), FilterException);
+}
+
+TEST(BrightnessFilterTest, IdentityFactor) {
+  Image img = makeColorImage(123, 45, 67);
+  BrightnessFilter f(1.0f);
+  f.apply(img);
+  EXPECT_EQ(img.at(0, 0, 0), 123);
+  EXPECT_EQ(img.at(0, 0, 1), 45);
+  EXPECT_EQ(img.at(0, 0, 2), 67);
+}

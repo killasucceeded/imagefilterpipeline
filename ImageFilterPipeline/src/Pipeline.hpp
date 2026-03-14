@@ -49,6 +49,28 @@ class Pipeline {
     filters_.push_back(std::move(filter));
   }
 
+  /// Применяет все фильтры к изображению по порядку.
+  ///
+  /// log — поток для вывода прогресса (по умолчанию std::cout).
+  ///       Можно передать std::ostringstream для тестов без вывода в консоль.
+  void run(Image& img, std::ostream& log = std::cout) const {
+    if (filters_.empty()) {
+      log << "[Pipeline] No filters — image unchanged.\n";
+      return;
+    }
+
+    log << "[Pipeline] Starting — " << filters_.size() << " filter(s)\n";
+
+    // Range-based for loop + const auto& — перебираем фильтры без копирования.
+    // filter имеет тип const unique_ptr<Filter>&
+    for (const auto& filter : filters_) {
+      log << "  -> Applying: " << filter->name() << " ... ";
+      filter->apply(img);  // виртуальный вызов — выполняется код конкретного фильтра
+      log << "done\n";
+    }
+
+    log << "[Pipeline] Complete.\n";
+  }
 
 
  private:

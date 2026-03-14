@@ -23,3 +23,30 @@ add_executable(ifp
 
 # src/ for project headers, third_party/ for stb_image
 target_include_directories(ifp PRIVATE src third_party)
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+include(FetchContent)
+
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG        v1.14.0
+)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+enable_testing()
+
+add_executable(ifp_tests
+  tests/test_main.cpp
+)
+
+target_include_directories(ifp_tests PRIVATE src third_party)
+
+target_link_libraries(ifp_tests
+  PRIVATE
+    GTest::gtest_main
+)
+
+include(GoogleTest)
+gtest_discover_tests(ifp_tests)

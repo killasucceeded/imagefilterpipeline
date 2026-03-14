@@ -1,10 +1,13 @@
 // Стандартные заголовки C++
 #include <filesystem>  // std::filesystem::path — работа с путями к файлам
 #include <iostream>    // std::cout, std::cin — ввод/вывод в консоль
+#include <limits>      // std::numeric_limits
 #include <memory>      // std::make_unique — создание объектов с умными указателями
 #include <optional>    // std::optional — значение, которое может отсутствовать
+#include <sstream>     // std::ostringstream — строковый поток (для форматирования)
 #include <string>      // std::string
 #include <vector>      // std::vector — динамический массив
+#include <clocale>     // std::setlocale — настройка локали (для кириллицы)
 
 // Заголовки нашего проекта
 #include "Exceptions.hpp"               // ImageException и производные
@@ -277,4 +280,80 @@ void menuStatus(const AppState& state) {
   }
   pause();
 }
+
+// ── Главное меню ──────────────────────────────────────────────────────────────
+
+/// Выводит главное меню с текущим статусом изображения.
+void printMainMenu(const AppState& state) {
+  printBanner();
+
+  // Строка статуса — показывает что загружено и сколько фильтров добавлено.
+  if (state.hasImage()) {
+    std::cout << "  Изображение : " << state.imagePath
+              << " (" << state.image->width() << "×"
+              << state.image->height() << ")";
+    if (!state.filterLog.empty()) {
+      std::cout << "  |  Фильтров: " << state.filterLog.size();
+    }
+    std::cout << "\n\n";
+  } else {
+    std::cout << "  Изображение не загружено\n\n";
+  }
+
+  std::cout <<
+    "  1. Загрузить изображение\n"
+    "  2. Добавить фильтр\n"
+    "  3. Запустить конвейер (применить все фильтры)\n"
+    "  4. Сохранить результат\n"
+    "  5. Состояние / список фильтров\n"
+    "  0. Выход\n\n";
+}
+
+/// Главный цикл приложения.
+void run() {
+  AppState state;  // создаём начальное (пустое) состояние
+
+  while (true) {  // бесконечный цикл — выход через case 0 (return)
+    clearScreen();
+    printMainMenu(state);
+
+    int choice = promptInt("Выбор: ", 0, 5);
+    clearScreen();
+
+    // switch/case — диспетчеризация по выбору пользователя.
+    switch (choice) {
+      case 1: menuLoadImage(state);   break;
+      case 2: menuAddFilter(state);   break;
+      case 3: menuRunPipeline(state); break;
+      case 4: menuSaveImage(state);   break;
+      case 5: menuStatus(state);      break;
+      case 0:
+        std::cout << "До свидания!\n";
+        return;  // выходим из run() → программа завершается
+    }
+  }
+}
+
 }  // namespace ifp::ui
+
+// ── Точка входа ───────────────────────────────────────────────────────────────
+
+/// Функция main — точка входа программы. С неё начинается выполнение.
+/// Возвращает 0 при успехе, ненулевое значение при ошибке (конвенция POSIX).
+int main() {
+  // Настройка кодировки для корректного отображения кириллицы в Windows.
+  std::setlocale(LC_ALL, "ru-RU.UTF-8");
+  system("chcp 65001 > nul");  // переключаем консоль Windows на UTF-8
+
+  try {
+    // Запускаем основной цикл приложения.
+    ifp::ui::run();
+  } catch (const std::exception& e) {
+    // Ловим любое необработанное исключение — последний рубеж защиты.
+    // std::exception — базовый класс всех стандартных исключений C++.
+    std::cerr << "[FATAL] " << e.what() << "\n";
+    return 1;  // ненулевой код возврата сигнализирует об ошибке
+  }
+
+  return 0;  // успешное завершение
+}

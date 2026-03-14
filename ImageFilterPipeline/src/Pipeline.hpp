@@ -72,6 +72,17 @@ class Pipeline {
     log << "[Pipeline] Complete.\n";
   }
 
+  /// Количество фильтров в конвейере.
+  [[nodiscard]] std::size_t size()  const noexcept { return filters_.size(); }
+
+  /// Возвращает true, если фильтров нет.
+  [[nodiscard]] bool        empty() const noexcept { return filters_.empty(); }
+
+  /// Возвращает имя фильтра по индексу — используется в тестах.
+  /// vector::at() бросает std::out_of_range при неверном индексе.
+  [[nodiscard]] const std::string filterName(std::size_t i) const {
+    return filters_.at(i)->name();
+  }
 
  private:
   /// Вектор фильтров — порядок элементов определяет порядок применения.

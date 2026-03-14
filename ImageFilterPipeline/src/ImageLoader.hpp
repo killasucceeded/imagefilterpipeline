@@ -47,6 +47,42 @@ class ImageLoader {
       return std::nullopt;
     }
 
+    int w = 0, h = 0, channels = 0;
+    // w, h, channels — выходные параметры stbi_load.
+    // stbi_load сам определит размеры изображения и запишет их сюда.
+
+    // stbi_load возвращает указатель на malloc-буфер с пикселями.
+    // Оборачиваем в unique_ptr с кастомным deleter'ом (stbi_image_free вместо delete),
+    // чтобы буфер гарантированно освободился даже при исключении (RAII).
+    auto deleter = [](unsigned char* p) { stbi_image_free(p); };
+    std::unique_ptr<unsigned char, decltype(deleter)> raw(
+        stbi_load(
+            path.c_str(),      // путь к файлу
+            &w, &h,            // stbi запишет сюда ширину и высоту
+            &channels,         // stbi запишет сюда число каналов в файле
+            Image::kChannels   // просим stbi принудительно вернуть 3 канала (RGB)
+        ),
+        deleter  // кастомный освободитель памяти
+    );
+
+    if (!raw) {
+      // stbi_load вернул nullptr — файл есть, но прочитать не смог.
+      throw ImageFormatException(
+          std::string("stbi_load failed: ") + stbi_failure_reason() + " — " + path);
+    }
+
+    // Создаём наш объект Image и копируем пиксели из stbi-буфера.
+    // После этого stbi-буфер нам больше не нужен — unique_ptr его освободит.
+    Image img(static_cast<std::size_t>(w), static_cast<std::size_t>(h));
+    std::memcpy(
+        img.rawData(),   // куда копировать — буфер нашего Image
+        raw.get(),       // откуда копировать — буфер stbi
+        static_cast<std::size_t>(w) * h * Image::kChannels  // сколько байт
+    );
+
+    return img;  // возвращаем Image, обёрнутый в optional
+  }
+
 
 };
 

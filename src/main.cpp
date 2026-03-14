@@ -82,4 +82,4 @@ void printBanner() {
   // Несколько строковых литералов подряд — компилятор склеивает их в одну строку.
 }
 
-}  // namespace ifp::ui
+}  // namespace  ifp::ui

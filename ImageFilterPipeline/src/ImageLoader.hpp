@@ -18,6 +18,15 @@
 
 namespace ifp {
 
+/// Статический класс для загрузки и сохранения изображений.
+///
+/// Все методы статические — не нужно создавать объект ImageLoader,
+/// просто вызываем ImageLoader::load(...) и ImageLoader::save(...).
+///
+/// Поддерживаемые форматы: PNG, JPEG, BMP, PPM (через stb_image).
+/// Сохранение всегда в формате PNG (через stb_image_write).
+class ImageLoader {
 
+};
 
 }  // namespace ifp
